@@ -122,7 +122,7 @@
       <div class="stat"><span class="muted">Last seen</span><span id="lastSeen" class="mono" style="text-align:right;max-width:62%"></span></div>
       <div class="stat"><span class="muted">Last checked</span><span id="lastChecked" class="mono" style="text-align:right;max-width:62%"></span></div>
       <div class="stat" style="border-bottom:0;padding-bottom:0"><span class="muted">Auto-poll</span><span id="autoPollNote" class="mono" style="font-size:.78rem"></span></div>
-      <h3>Response preview (stripped !! UNTRUSTED banner)</h3>
+      <h3>Response preview <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.78rem" title="Technocore prefixes all KV values with '!! UNTRUSTED CONTENT' because any user can write — hidden here to show the pure DID value.">— Technocore safety banner hidden</span></h3>
       <div id="kvPreview" class="kv-preview" aria-live="polite">— not fetched yet —</div>
       <p class="muted" id="kvMeta" style="margin-top:8px"></p>
       <div id="corsFallback" style="display:none;margin-top:10px;padding:10px;border:1px dashed #334155;border-radius:10px;background:#0b1220">
@@ -147,7 +147,7 @@
         <li>Initial keepalive seeded: <code>2026-08-26T16:55:41Z</code></li>
         <li>On successful fetch, <code>Date</code> header updates lastSeen if present; otherwise local time.</li>
         <li>Auto-poll refreshes every 60s after first successful fetch.</li>
-        <li>Daily auto-refresh expected ~<b>12:00 noon</b> keepalive.</li>
+        <li>KV notes expire after ~7 days idle — refresh with <code>SET</code>.</li>
       </ul>
     </section>
   </div>
@@ -161,8 +161,8 @@
         <p class="muted" style="margin:0">Seq <b>297935</b> <code>Hello!</code> &mdash; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">technocore.chat/r/lobby</a></p>
         <h3>KV</h3>
         <p class="muted" style="margin:0"><a class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">https://technocore.chat/kv/did-2e/712151620853b7</a></p>
-        <h3>Daily keepalive</h3>
-        <p class="muted" style="margin:0">12:00 noon — DID re-anchored daily, 7-day expiry.</p>
+        <h3>Expiry</h3>
+        <p class="muted" style="margin:0">KV notes expire after ~7 days idle — refresh with <code>SET</code>.</p>
       </div>
       <div>
         <h3>Manuals &amp; labs</h3>
@@ -322,13 +322,51 @@
     return `${m}m ${s}s`;
   }
 
+  function formatRelative(date){
+    const diff=Date.now()-date.getTime();
+    const abs=Math.abs(diff);
+    const d=Math.floor(abs / 86400000);
+    const h=Math.floor((abs % 86400000) / 3600000);
+    const m=Math.floor((abs % 3600000) / 60000);
+    const s=Math.floor((abs % 60000) / 1000);
+    if(diff>=0){
+      if(d>0) return `${d}d ${h}h ago`;
+      if(h>0) return `${h}h ${m}m ago`;
+      if(m>0) return `${m}m ago`;
+      if(s>5) return `${s}s ago`;
+      return "just now";
+    }else{
+      if(d>0) return `in ${d}d ${h}h`;
+      if(h>0) return `in ${h}h ${m}m`;
+      if(m>0) return `in ${m}m ${s}s`;
+      return `in ${s}s`;
+    }
+  }
+  function formatHuman(date){
+    try{
+      const utc=new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'UTC',timeZoneName:'short'}).format(date);
+      return `${utc} — ${formatRelative(date)}`;
+    }catch{ return date.toISOString(); }
+  }
+  function setFriendlyTime(el, iso){
+    if(!iso){ el.textContent="—"; el.removeAttribute("title"); try{delete el.dataset.iso;}catch{} return; }
+    const d=new Date(iso);
+    if(isNaN(d.getTime())){ el.textContent=iso; el.title=iso; return; }
+    const human=formatHuman(d);
+    let local="";
+    try{ local=new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZoneName:'short'}).format(d); }catch{ local=d.toString(); }
+    el.textContent=human;
+    el.title=`Local: ${local} | ISO: ${d.toISOString()} | UTC: ${d.toUTCString()}`;
+    el.dataset.iso=d.toISOString();
+  }
+
   function updateExpiryUI() {
     const last = new Date(lastKeepaliveISO);
     const expiry = new Date(last.getTime() + 7*24*3600*1000);
-    keepaliveTime.textContent = last.toISOString();
-    expiryTime.textContent = expiry.toISOString();
-    lastSeenEl.textContent = new Date(lastSeenISO).toISOString();
-    lastCheckedEl.textContent = lastCheckedISO ? new Date(lastCheckedISO).toISOString() : "—";
+    setFriendlyTime(keepaliveTime, last.toISOString());
+    setFriendlyTime(expiryTime, expiry.toISOString());
+    setFriendlyTime(lastSeenEl, lastSeenISO);
+    if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
     autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
     autoPollNote.title = autoPollTimer ? "Auto-poll active (every 60s)" : "Auto-poll idle (starts after first successful fetch)";
     const diff = expiry.getTime() - Date.now();
@@ -459,7 +497,7 @@
       }
       const prefix = stripped.slice(0, 2000);
       kvPreview.textContent = prefix || "(empty body)";
-      if (hadBanner) kvMeta.textContent = "Note: stripped !! UNTRUSTED banner (untrusted mirror).";
+      if (hadBanner) { kvMeta.textContent = "Technocore safety banner hidden \u2014 original KV values are prefixed with a warning because anyone can write."; kvMeta.title="Technocore prefixes all KV values with '!! UNTRUSTED CONTENT' because the store is world-writable \u2014 we strip it to show the pure DID value."; }
       else kvMeta.textContent = raw ? `Body ${raw.length} bytes, showing ${prefix.length}.` : "";
 
       if (status === 200) {

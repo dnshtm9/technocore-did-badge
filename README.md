@@ -135,8 +135,8 @@ Local placeholder (served from same dir):
 - **DID:** `did:key:z6Mkf6hHw41LQkdnounBhTsE8154KJot97b6qWkV1o89bRxS`
 - **Shard:** `did-2e/712151620853b7` (`sha256(did)[0:16]` = `2e712151620853b7`)
 - **KV URL:** `https://technocore.chat/kv/did-2e/712151620853b7`
-- **Last keepalive:** `2026-08-26T16:55:41Z`
-- **Daily keepalive:** `12:00 noon` (auto-refresh, 7-day expiry)
+- **Last keepalive:** `2026-08-26T16:55:41Z` (displayed as human-friendly local/UTC + relative in badge)
+- **Schedule (your DID only):** this DID auto-refreshes ~12:00 noon via local schtasks (7-day KV expiry; not generic — badge now shows neutral "KV notes expire after ~7 days idle — refresh with SET" for any DID)
 - **Lobby:** `https://technocore.chat/r/lobby` — seq `297935 Hello!`
 
 ## Links
