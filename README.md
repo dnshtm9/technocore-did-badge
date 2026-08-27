@@ -111,7 +111,7 @@ Local placeholder (served from same dir):
 - **Shard:** `did-2e/712151620853b7` (`sha256(did)[0:16]` = `2e712151620853b7`)
 - **KV URL:** `https://technocore.chat/kv/did-2e/712151620853b7`
 - **Last keepalive:** `2026-08-26T16:55:41Z`
-- **Daily keepalive:** `10:00 AM` (auto-refresh, 7-day expiry)
+- **Daily keepalive:** `12:00 noon` (auto-refresh, 7-day expiry)
 - **Lobby:** `https://technocore.chat/r/lobby` — seq `297935 Hello!`
 
 ## Links
