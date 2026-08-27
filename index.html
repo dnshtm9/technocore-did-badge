@@ -78,7 +78,7 @@
   <!-- DID + Shard -->
   <section class="card" aria-labelledby="did-title">
     <h2 id="did-title">Identity</h2>
-    <label for="didInput" class="muted">DID (query param <code>?did=</code> overrides default)</label>
+    <label for="didInput" class="muted">Viewed DID — add <code>?did=did:key:...</code> to URL (defaults to site owner's DID if missing)</label>
     <div class="row" style="margin-top:8px">
       <input id="didInput" type="text" spellcheck="false" autocomplete="off" placeholder="did:key:z6Mk...">
     </div>
@@ -107,7 +107,7 @@
       <img id="badge-live-img" alt="Live status badge (data URL)" width="144" height="20" style="display:none">
       <span id="badge-status-label" class="muted" style="font-size:.78rem"></span>
     </div>
-    <p class="muted" style="margin:8px 0 0">Shard: <code>fp16 = sha256(did)[0:16]</code> via <code>crypto.subtle.digest</code> → <code>did-{fp16[0:2]}/{fp16[2:]}</code>. Default <code>fp16=2e712151620853b7</code> → <code>did-2e/712151620853b7</code>. <span class="mono" style="font-size:.78rem">badge.svg is static; live badge is data-URL generated below.</span></p>
+    <p class="muted" style="margin:8px 0 0">Shard: <code>fp16 = sha256(did)[0:16]</code> via <code>crypto.subtle.digest</code> → <code>did-{fp16[0:2]}/{fp16[2:]}</code>. Example — default DID: <code>fp16=2e712151620853b7</code> → <code>did-2e/712151620853b7</code>. <span class="mono" style="font-size:.78rem">badge.svg is static; live badge is data-URL generated below.</span></p>
   </section>
 
   <div class="grid">
@@ -144,7 +144,7 @@
       <p class="muted" style="text-align:center;margin:0" id="countdownSub">7-day window from last keepalive</p>
       <h3>Notes</h3>
       <ul class="muted" style="margin:6px 0 0 18px">
-        <li>Initial keepalive seeded: <code>2026-08-26T16:55:41Z</code></li>
+        <li>Example (default DID only): <code>2026-08-26T16:55:41Z</code> — other DIDs show — until Verify Live (Date header)</li>
         <li>On successful fetch, <code>Date</code> header updates lastSeen if present; otherwise local time.</li>
         <li>Auto-poll refreshes every 60s after first successful fetch.</li>
         <li>KV notes expire after ~7 days idle — refresh with <code>SET</code>.</li>
@@ -153,14 +153,14 @@
   </div>
 
   <!-- Static info -->
-  <section class="card" aria-labelledby="info-title">
-    <h2 id="info-title">Static Info &amp; Links</h2>
+  <section id="myExampleCard" class="card" aria-labelledby="info-title">
+    <h2 id="info-title">Example — My lobby (default DID)</h2>
     <div class="grid">
       <div>
         <h3>Lobby</h3>
-        <p class="muted" style="margin:0">Seq <b>297935</b> <code>Hello!</code> &mdash; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">technocore.chat/r/lobby</a></p>
+        <p class="muted" style="margin:0">Seq <b>297935</b> <code>Hello!</code> &mdash; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">technocore.chat/r/lobby</a> (my DID only)</p>
         <h3>KV</h3>
-        <p class="muted" style="margin:0"><a class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">https://technocore.chat/kv/did-2e/712151620853b7</a></p>
+        <p class="muted" style="margin:0"><a id="staticKvLink" class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">https://technocore.chat/kv/did-2e/712151620853b7</a></p>
         <h3>Expiry</h3>
         <p class="muted" style="margin:0">KV notes expire after ~7 days idle — refresh with <code>SET</code>.</p>
       </div>
@@ -210,7 +210,7 @@
 </main>
 
 <footer>
-  <p>Built by DID <span class="mono">did:key:z6Mkf6hHw41LQkdnounBhTsE8154KJot97b6qWkV1o89bRxS</span> &middot; shard <code>did-2e/712151620853b7</code></p>
+  <p>Built by site owner (default DID) <span class="mono">did:key:z6Mkf6hHw41LQkdnounBhTsE8154KJot97b6qWkV1o89bRxS</span> &middot; shard <code>did-2e/712151620853b7</code></p>
   <p>Verify via <code class="curl">curl -s https://technocore.chat/kv/did-2e/712151620853b7</code> &middot; <a href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">KV</a> &middot; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Lobby</a> &middot; MIT License</p>
 </footer>
 
@@ -256,8 +256,8 @@
   let currentFp16 = DEFAULT_FP16;
   let currentHex = DEFAULT_HEX;
   let currentShard = DEFAULT_SHARD;
-  let lastKeepaliveISO = INITIAL_KEEPALIVE_ISO;
-  let lastSeenISO = INITIAL_KEEPALIVE_ISO;
+  let lastKeepaliveISO = null;
+  let lastSeenISO = null;
   let lastCheckedISO = null;
   let currentStatusKind = "idle";
   let expiryTimer = null;
@@ -361,11 +361,23 @@
   }
 
   function updateExpiryUI() {
+    if (!lastKeepaliveISO) {
+      keepaliveTime.textContent = "— awaiting Verify Live —";
+      expiryTime.textContent = "—";
+      countdown.textContent = "— UNKNOWN";
+      countdown.className = "pill unknown";
+      setFriendlyTime(lastSeenEl, null);
+      if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
+      autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
+      autoPollNote.title = autoPollTimer ? "Auto-poll active (every 60s)" : "Auto-poll idle (starts after first successful fetch)";
+      countdownSub.textContent = "7-day window from last keepalive";
+      return;
+    }
     const last = new Date(lastKeepaliveISO);
     const expiry = new Date(last.getTime() + 7*24*3600*1000);
     setFriendlyTime(keepaliveTime, last.toISOString());
     setFriendlyTime(expiryTime, expiry.toISOString());
-    setFriendlyTime(lastSeenEl, lastSeenISO);
+    if (!lastSeenISO) { lastSeenEl.textContent="—"; lastSeenEl.removeAttribute("title"); try{delete lastSeenEl.dataset.iso;}catch{} } else setFriendlyTime(lastSeenEl, lastSeenISO);
     if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
     autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
     autoPollNote.title = autoPollTimer ? "Auto-poll active (every 60s)" : "Auto-poll idle (starts after first successful fetch)";
@@ -459,6 +471,10 @@
     fallbackLink.href = kvUrl;
     curlOneLiner.textContent = `curl -s ${kvUrl}`;
     $("viewKvBtn").href = kvUrl;
+    const staticKvLink = document.getElementById('staticKvLink'); if (staticKvLink) { staticKvLink.href = KV_BASE + currentShard; staticKvLink.textContent = KV_BASE + currentShard; }
+    const myExampleCard = document.getElementById('myExampleCard'); if (myExampleCard) myExampleCard.style.display = (currentDid === DEFAULT_DID ? '' : 'none');
+    if (currentDid === DEFAULT_DID) { lastKeepaliveISO = INITIAL_KEEPALIVE_ISO; lastSeenISO = INITIAL_KEEPALIVE_ISO; } else { lastKeepaliveISO = null; lastSeenISO = null; }
+    updateExpiryUI();
     updateEmbed();
     // reset badge to idle until fetch proves otherwise (keeps previous badge live preview coherent)
     if(currentStatusKind==="idle") updateBadgeImages("idle");
@@ -560,9 +576,6 @@
   const qDid = getDidFromQuery();
   updateBadgeImages("idle");
   refreshDid(qDid || DEFAULT_DID, {skipFetch:false});
-  lastSeenISO = INITIAL_KEEPALIVE_ISO;
-  lastKeepaliveISO = INITIAL_KEEPALIVE_ISO;
-  updateExpiryUI();
   expiryTimer = setInterval(updateExpiryUI, 1000);
   window.__badge = { verify, refreshDid, sha256HexSlice16, makeBadgeSvg, badgeDataUrl };
 })();
