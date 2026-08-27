@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="144" height="20" role="img" aria-label="technocore: VERIFIED">
+  <title>technocore: VERIFIED</title>
+  <linearGradient id="s" x2="0" y2="100%">
+    <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+    <stop offset="1" stop-opacity=".1"/>
+  </linearGradient>
+  <clipPath id="r"><rect width="144" height="20" rx="3" fill="#fff"/></clipPath>
+  <g clip-path="url(#r)">
+    <rect width="78" height="20" fill="#555"/>
+    <rect x="78" width="66" height="20" fill="#4c1"/>
+    <rect width="144" height="20" fill="url(#s)"/>
+  </g>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="11">
+    <text x="39" y="15" fill="#010101" fill-opacity=".3">technocore</text>
+    <text x="39" y="14">technocore</text>
+    <text x="111" y="15" fill="#010101" fill-opacity=".3">VERIFIED</text>
+    <text x="111" y="14">VERIFIED</text>
+  </g>
+  <!--
+    Static shields.io-style badge for GitHub Pages.
+    Left:  technocore (#555)  Right: VERIFIED (#4c1)
+    Alternatives: NOT FOUND (#e05d44) / UNKNOWN (#9f9f9f) / ERROR (#fe7d37)
+    This file is static — live status is rendered client-side in index.html
+    via JS data-URL badge generation (makeBadgeSvg / badgeDataUrl) and
+    auto-poll from https://technocore.chat/kv/did-2e/712151620853b7
+    Future endpoint idea: /badge.svg?did=did:key:z... -> dynamic SVG (requires worker).
+    Placeholder query ?did= is ignored by static hosting but preserved for snippet parity.
+  -->
+</svg>

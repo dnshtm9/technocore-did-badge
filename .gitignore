@@ -1,0 +1,19 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# No build — but keep hygiene
+node_modules/
+dist/
+.cache/
+
+# Python http preview
+__pycache__/
