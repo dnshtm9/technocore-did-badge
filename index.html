@@ -145,7 +145,7 @@
       <p class="muted" style="text-align:center;margin:0" id="countdownSub">7-day window from last keepalive</p>
       <h3>Notes</h3>
       <ul class="muted" style="margin:6px 0 0 18px">
-        <li>Example (default DID only): <code>2026-08-26T16:55:41Z</code> — other DIDs show — until Verify Live (Date header)</li>
+        <li>Shows — awaiting Verify Live — until first successful fetch; then expiry = Date header +7d (or local time if header not exposed).</li>
         <li>On successful fetch, <code>Date</code> header updates lastSeen if present; otherwise local time.</li>
         <li>Auto-poll refreshes every 60s after first successful fetch.</li>
         <li>KV notes expire after ~7 days idle — refresh with <code>SET</code>.</li>
@@ -221,7 +221,6 @@
   const DEFAULT_FP16 = "2e712151620853b7";
   const DEFAULT_HEX = "712151620853b7";
   const DEFAULT_SHARD = "did-2e/" + DEFAULT_HEX;
-  const INITIAL_KEEPALIVE_ISO = "2026-08-26T16:55:41Z";
   const KV_BASE = "https://technocore.chat/kv/";
   const PAGES_PLACEHOLDER_BASE = "https://dnshtm9.github.io/technocore-did-badge/";
 
@@ -474,7 +473,8 @@
     $("viewKvBtn").href = kvUrl;
     const staticKvLink = document.getElementById('staticKvLink'); if (staticKvLink) { staticKvLink.href = KV_BASE + currentShard; staticKvLink.textContent = KV_BASE + currentShard; }
     const myExampleCard = document.getElementById('myExampleCard'); if (myExampleCard) myExampleCard.style.display = (currentDid === DEFAULT_DID ? '' : 'none');
-    if (currentDid === DEFAULT_DID) { lastKeepaliveISO = INITIAL_KEEPALIVE_ISO; lastSeenISO = INITIAL_KEEPALIVE_ISO; } else { lastKeepaliveISO = null; lastSeenISO = null; }
+    // dynamic expiry: never seed from hard-coded date — show awaiting until fetch succeeds
+    lastKeepaliveISO = null; lastSeenISO = null;
     updateExpiryUI();
     updateEmbed();
     // reset badge to idle until fetch proves otherwise (keeps previous badge live preview coherent)
@@ -491,6 +491,7 @@
     httpStatus.textContent = "fetching…";
     setStatus("idle", "VERIFYING…");
     kvPreview.textContent = "— fetching " + kvUrl + " —";
+    console.log("[badge] verify() fetching", kvUrl);
     try {
       const resp = await fetch(kvUrl, { method: "GET", cache: "no-store" });
       const status = resp.status;
@@ -500,17 +501,22 @@
       try { raw = await resp.text(); } catch(e) { raw = "[no body: "+e.message+"]"; }
       const stripped = stripUntrusted(raw);
       const hadBanner = stripped.length !== raw.trimStart().length;
-      const dateHdr = resp.headers.get("date");
+      const dateHdr = resp.headers.get("Date") || resp.headers.get("date");
+      let dateFound = false;
       if (dateHdr) {
         const d = new Date(dateHdr);
         if (!isNaN(d.getTime())) {
           lastSeenISO = d.toISOString();
           lastKeepaliveISO = d.toISOString();
+          dateFound = true;
         } else {
-          lastSeenISO = new Date().toISOString();
+          console.warn("[badge] Date header unparseable:", dateHdr);
         }
-      } else {
-        if (status===200) lastSeenISO = new Date().toISOString();
+      }
+      if (!dateFound) {
+        // Date not exposed via CORS (Access-Control-Expose-Headers missing) — use local time so UI never stays stale
+        if (status===200) { lastSeenISO = new Date().toISOString(); lastKeepaliveISO = lastSeenISO; }
+        if (!dateHdr) console.warn("[badge] Date header missing (CORS not exposed) — using local time; server Date:", dateHdr);
       }
       const prefix = stripped.slice(0, 2000);
       kvPreview.textContent = prefix || "(empty body)";
@@ -531,6 +537,7 @@
       }
     } catch (err) {
       lastCheckedISO = new Date().toISOString();
+      console.warn("[badge] fetch failed", err);
       httpStatus.textContent = "fetch failed";
       kvPreview.textContent = String(err && err.message || err);
       setStatus("error", "ERROR — CORS / network");
