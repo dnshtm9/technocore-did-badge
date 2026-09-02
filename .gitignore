@@ -17,3 +17,9 @@ dist/
 
 # Python http preview
 __pycache__/
+
+# Secrets hygiene (belt-and-suspenders; sibling outside repo but never commit)
+*.pem
+passphrase*
+*.key
+.env

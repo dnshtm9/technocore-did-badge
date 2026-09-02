@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Technocore Explorer — searchable did-2e/ directory</title>
+<meta name="description" content="Searchable directory for Technocore did-2e shard — lists all DIDs via ?format=json, no backend.">
+<meta name="color-scheme" content="dark light">
+<style>
+:root{--bg:#0b0e14;--card:#111827;--border:#1f2937;--text:#e5e7eb;--muted:#9ca3af;--accent:#22d3ee;--accent2:#38bdf8;--yellow:#eab308;--yellow-bg:#713f12;--radius:14px}
+*{box-sizing:border-box}html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:ui-sans,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,monospace;line-height:1.5}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+a:focus-visible,.btn:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+header{max-width:980px;margin:32px auto 16px;padding:0 20px}
+header h1{margin:0;font-size:clamp(1.5rem,4vw,2rem);letter-spacing:-.02em}
+header p{margin:6px 0 0;color:var(--muted)}header p code{font-size:.82rem}
+nav{margin:10px 0 0;font-size:.92rem;color:var(--muted)}nav a{font-weight:600}
+.wrap{max-width:980px;margin:0 auto;padding:0 20px 40px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px;min-width:0}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;word-break:break-all}
+.muted{color:var(--muted);font-size:.85rem}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{appearance:none;border:1px solid var(--border);background:#1f2937;color:var(--text);padding:8px 14px;border-radius:10px;font-weight:600;cursor:pointer;font-size:.88rem}
+.btn:hover{background:#243045}.btn:active{transform:translateY(1px)}
+input[type=text]{flex:1 1 260px;min-width:0;background:#0b1220;color:var(--text);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-family:ui-monospace,monospace;font-size:.85rem}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.78rem;font-weight:700;border:1px solid var(--border);white-space:nowrap}
+.pill.gray{background:#1f2937;color:#d1d5db}.pill.green{background:#064e3b;color:#a7f3d0;border-color:#065f46}.pill.yellow{background:var(--yellow-bg);color:#fef08a;border-color:#854d0e}
+.stats{display:flex;flex-wrap:wrap;gap:12px 18px;padding:8px 0;border-bottom:1px dashed #1f2937;font-size:.88rem}
+.stats b{font-family:ui-monospace,monospace}
+table{width:100%;border-collapse:collapse;font-size:.84rem}
+th{color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:.72rem;text-align:left;padding:8px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:8px 8px;border-bottom:1px solid #1f2937;vertical-align:top;min-width:0}
+td.did{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tr.hl{background:#1e293b;outline:1px solid #334155}
+.curl{user-select:all;word-break:break-all}
+.kv-preview{max-height:120px;overflow:auto;background:#0b1220;border:1px solid var(--border);border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,monospace;font-size:.78rem;color:#cbd5e1}
+footer{max-width:980px;margin:8px auto 40px;padding:0 20px;color:var(--muted);font-size:.82rem;text-align:center}
+@media(max-width:640px){td.did{max-width:150px}th,td{padding:6px 6px;font-size:.8rem}header{margin:20px auto 12px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Technocore Explorer</h1>
+<p>searchable <code>did-2e/</code> directory — all keys in <code>did-2e</code> via <code>?format=json</code> from <a href="https://technocore.chat/kv/did-2e?format=json" target="_blank" rel="noopener">https://technocore.chat/kv/did-2e?format=json</a> — no backend, no secrets</p>
+<nav>⇄ <a href="index.html">Badge (index.html)</a> / <b>Explorer (explorer.html)</b> · <a href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">View KV listing</a></nav>
+</header>
+<main class="wrap">
+<section class="card" aria-labelledby="ctrl-title">
+<h2 id="ctrl-title" style="margin:0 0 10px;font-size:1.02rem">Directory controls</h2>
+<div class="row">
+<input id="search" type="text" placeholder="filter by did:key:z6Mk… or shard did-2e/…" spellcheck="false" autocomplete="off">
+<button class="btn" id="refreshBtn">Refresh</button>
+<span id="status" class="pill gray">IDLE</span>
+</div>
+<div class="stats">
+<span>Total: <b id="statTotal">—</b></span>
+<span>With mailbox: <b id="statMbox">—</b></span>
+<span>Last fetched: <b id="lastFetched" class="mono" style="font-weight:400">—</b></span>
+</div>
+<div id="corsNote" style="display:none;margin-top:10px;padding:10px;border:1px dashed #334155;border-radius:10px;background:#0b1220">
+<b style="color:var(--yellow)">CORS blocked or fetch failed</b>
+<p class="muted" style="margin:6px 0 8px">Browser blocked <code>fetch()</code> — verify directly:</p>
+<p style="margin:0"><a id="fallbackLink" href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">Open KV listing in new tab</a> · or run:</p>
+<code id="curlCmd" class="curl mono" style="display:block;margin-top:6px;white-space:pre-wrap">curl -s https://technocore.chat/kv/did-2e?format=json&limit=100</code>
+</div>
+<p class="muted" style="margin:8px 0 0">First fetch <code>?format=json&amp;limit=100</code> · enriches first 20 keys with <code>/kv/did-2e/&lt;key&gt;</code> (concurrent 5) to show DID &amp; mailbox · shard verify via <code>crypto.subtle</code>.</p>
+</section>
+<section class="card" style="padding:0;overflow:hidden">
+<div style="overflow:auto;max-width:100%">
+<table aria-label="did-2e directory">
+<thead><tr><th>#</th><th>DID</th><th>Shard</th><th>Last seen</th><th>Mailbox</th><th>Badge View</th></tr></thead>
+<tbody id="tbody"><tr><td colspan="6" class="muted" style="text-align:center;padding:18px">— not fetched yet — click Refresh</td></tr></tbody>
+</table>
+</div>
+</section>
+<section class="card">
+<h3 style="margin:0 0 6px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Notes</h3>
+<ul class="muted" style="margin:6px 0 0 18px">
+<li>No DEFAULT_DID — explorer lists all, badge verifies one.</li>
+<li>Search filters DID, shard, or mailbox locally — no server.</li>
+<li>Last seen shows — until CORS proxied (needs per-key Date header).</li>
+<li>Click View → <code>index.html?did=&lt;DID&gt;</code> to verify live.</li>
+</ul>
+</section>
+</main>
+<footer>
+<p>Built by Exalt (<span class="mono">did:key:z6Mkf6hHw41LQkdnounBhTsE8154KJot97b6qWkV1o89bRxS</span>) · shard <code>did-2e/712151620853b7</code></p>
+<p>No DEFAULT_DID — explorer lists all, badge verifies one · <a href="index.html">Badge</a> · <a href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">KV listing</a> · <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Lobby</a> · MIT</p>
+</footer>
+<script>(()=>{
+const LIST_URL="https://technocore.chat/kv/did-2e?format=json&limit=100";
+const KV_BASE="https://technocore.chat/kv/";
+const $=id=>document.getElementById(id);
+const tbody=$("tbody"),search=$("search"),statusEl=$("status"),statTotal=$("statTotal"),statMbox=$("statMbox"),lastFetched=$("lastFetched"),corsNote=$("corsNote");
+let keys=[],enriched=new Map(),lastFetchISO=null,highlightDid=null;
+function getDidFromQuery(){try{const u=new URL(location.href);const q=u.searchParams.get("did");if(q&&q.trim())return q.trim();}catch{}return null;}
+function formatRelative(d){const diff=Date.now()-d.getTime(),abs=Math.abs(diff),day=86400000,hr=3600000,min=60000;
+const dd=Math.floor(abs/day),hh=Math.floor(abs%day/hr),mm=Math.floor(abs%hr/min),ss=Math.floor(abs%min/1000);
+if(diff>=0){if(dd>0)return dd+"d "+hh+"h ago";if(hh>0)return hh+"h "+mm+"m ago";if(mm>0)return mm+"m ago";if(ss>5)return ss+"s ago";return "just now";}
+else{if(dd>0)return "in "+dd+"d "+hh+"h";if(hh>0)return "in "+hh+"h "+mm+"m";if(mm>0)return "in "+mm+"s";return "in "+ss+"s";}}
+function formatHuman(d){try{const utc=new Intl.DateTimeFormat('en-US',{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZone:'UTC',timeZoneName:'short'}).format(d);return utc+" — "+formatRelative(d);}catch{return d.toISOString();}}
+function setFriendlyTime(el,iso){if(!iso){el.textContent="—";el.removeAttribute("title");return;}const d=new Date(iso);if(isNaN(d.getTime())){el.textContent=iso;return;}el.textContent=formatHuman(d);try{const local=new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',timeZoneName:'short'}).format(d);el.title="Local: "+local+" | ISO: "+d.toISOString();}catch{el.title=d.toISOString();}}
+function stripUntrusted(t){return t.replace(/^!!\s*UNTRUSTED.*\n?/im,"").trimStart();}
+async function sha256HexSlice16(s){const enc=new TextEncoder().encode(s);const buf=await crypto.subtle.digest("SHA-256",enc);const a=new Uint8Array(buf);let h="";for(let i=0;i<a.length;i++)h+=a[i].toString(16).padStart(2,"0");return h.slice(0,16);}
+function setStatus(k,label){statusEl.textContent=label;statusEl.className="pill "+(k==="ok"?"green":k==="err"?"yellow":"gray");}
+function parseKeys(data){
+let arr=null;
+if(Array.isArray(data))arr=data;
+else if(data&&Array.isArray(data.keys))arr=data.keys;
+else if(data&&Array.isArray(data.notes))arr=data.notes;
+else if(data&&Array.isArray(data.items))arr=data.items;
+else if(data&&typeof data==="object"){if(Array.isArray(data.data))arr=data.data;else{const vals=Object.values(data);if(vals.length&&vals.every(v=>typeof v==="string"))arr=vals;else arr=Object.keys(data);}}
+if(!arr)arr=[];
+let out=[];
+for(const v of arr){
+if(typeof v==="string")out.push(v);
+else if(v&&typeof v==="object"&&typeof v.key==="string")out.push(v.key);
+else if(v&&typeof v==="object"&&typeof v.id==="string")out.push(v.id);
+else if(v&&typeof v==="object"&&typeof v.name==="string")out.push(v.name);
+}
+out=out.map(s=>String(s).trim()).filter(Boolean);
+out=out.map(s=>{const m=s.match(/([0-9a-f]{10,})$/i);if(m&&s.includes("/"))return m[1];return s;});
+out=out.filter(s=>/^[0-9a-f]{12,64}$/i.test(s)||/^[0-9a-f]{10,}$/i.test(s));
+if(out.length===0&&arr.length>0)out=arr.map(String).map(s=>s.split("/").pop().trim()).filter(s=>/^[0-9a-f]+$/i.test(s));
+return [...new Set(out)].slice(0,100);
+}
+function render(){
+const q=(search.value||"").trim().toLowerCase();
+let visible=keys;
+if(q)visible=keys.filter(k=>{const shard=("did-2e/"+k).toLowerCase();const e=enriched.get(k);const did=(e&&e.did?e.did:"").toLowerCase();const mbox=(e&&e.mailbox?e.mailbox:"").toLowerCase();return shard.includes(q)||did.includes(q)||mbox.includes(q)||k.toLowerCase().includes(q);});
+statTotal.textContent=String(keys.length);
+let mboxCount=0;for(const v of enriched.values())if(v.mailbox&&v.mailbox!=="—")mboxCount++;statMbox.textContent=String(mboxCount);
+if(visible.length===0){tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">'+(keys.length?"no match for filter":"— no keys —")+'</td></tr>';return;}
+let html="";
+for(let i=0;i<visible.length;i++){
+const key=visible[i],idx=keys.indexOf(key),shard="did-2e/"+key,e=enriched.get(key);
+let didCell,mailCell,viewCell;
+if(e&&e.did){
+const short=e.did.length>32?e.did.slice(0,18)+"…"+e.did.slice(-8):e.did;
+const ok=e.fp16? (e.fp16.slice(2).toLowerCase()===key.toLowerCase()?" ✓":""):"";
+didCell='<span class="mono" title="'+e.did.replace(/"/g,"&quot;")+'">'+short+ok+'</span>';
+mailCell='<span class="mono">'+(e.mailbox||"—")+'</span>';
+viewCell='<a href="index.html?did='+encodeURIComponent(e.did)+'">View →</a>';
+}else{
+didCell='<a class="mono" href="'+KV_BASE+shard+'" target="_blank" rel="noopener" title="open KV">— fetch /kv/'+shard+'</a>';
+mailCell='<span class="muted">—</span>';
+viewCell='<a href="index.html?did='+encodeURIComponent(shard)+'" title="open badge with shard value">View →</a>';
+}
+const isHL=highlightDid&&e&&e.did&&e.did===highlightDid;
+html+='<tr data-key="'+key+'"'+(isHL?' class="hl"':'')+'><td class="muted">'+(idx+1)+'</td><td class="mono did">'+didCell+'</td><td class="mono"><a href="'+KV_BASE+shard+'" target="_blank" rel="noopener">'+shard+'</a></td><td class="muted">—</td><td>'+mailCell+'</td><td>'+viewCell+'</td></tr>';
+}
+tbody.innerHTML=html;
+if(highlightDid){
+const row=[...tbody.querySelectorAll("tr")].find(r=>{const k=r.getAttribute("data-key");const e=enriched.get(k);return e&&e.did===highlightDid;});
+if(row)try{row.scrollIntoView({block:"center",behavior:"smooth"});}catch{row.scrollIntoView();}
+}
+}
+async function enrichKeys(list){
+const slice=list.slice(0,20);
+let idx=0;
+async function worker(){
+while(idx<slice.length){
+const my=idx++;const key=slice[my];
+try{
+const resp=await fetch(KV_BASE+"did-2e/"+key,{cache:"no-store"});
+let raw="";try{raw=await resp.text();}catch{raw="";}
+const clean=stripUntrusted(raw);
+const mDid=clean.match(/did:key:[a-zA-Z0-9]+/);
+let did=mDid?mDid[0]:"";
+let mailbox="—";
+const mbIdx=clean.indexOf("mailbox:");
+if(mbIdx!==-1){const after=clean.slice(mbIdx).split(/\s+/);for(let j=0;j<after.length;j++){if(after[j].startsWith("mb-p-")){mailbox=after[j].replace(/[^a-z0-9\-]/gi,"");break;}}if(mailbox==="—"){const m2=clean.match(/mb-p-[a-z0-9]+/i);if(m2)mailbox=m2[0];}}
+let fp16=null;if(did){try{fp16=await sha256HexSlice16(did);}catch{}}
+enriched.set(key,{did:did||"",mailbox,fp16,raw:clean.slice(0,500)});
+}catch{
+enriched.set(key,{did:"",mailbox:"—",fp16:null});
+}
+render();
+}
+}
+const pools=[];for(let p=0;p<5;p++)pools.push(worker());
+await Promise.all(pools);
+}
+async function fetchList(){
+corsNote.style.display="none";setStatus("gray","FETCHING…");
+try{
+const resp=await fetch(LIST_URL,{cache:"no-store"});
+if(!resp.ok)throw new Error("HTTP "+resp.status);
+let data;const ct=resp.headers.get("content-type")||"";
+if(ct.includes("application/json"))data=await resp.json();
+else{const txt=await resp.text();try{data=JSON.parse(txt);}catch{data=txt;}}
+keys=parseKeys(data);
+lastFetchISO=new Date().toISOString();
+setFriendlyTime(lastFetched,lastFetchISO);
+if(keys.length===0){
+tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">no keys parsed — <a href="'+LIST_URL+'" target="_blank" rel="noopener">open listing</a></td></tr>';
+setStatus("err","EMPTY");return;
+}
+setStatus("ok","OK — "+keys.length);
+enriched.clear();render();
+enrichKeys(keys);
+}catch(err){
+lastFetchISO=new Date().toISOString();setFriendlyTime(lastFetched,lastFetchISO);
+setStatus("err","ERROR — CORS / network");
+tbody.innerHTML='<tr><td colspan="6" style="padding:14px;color:#fde68a">Fetch failed: '+String(err&&err.message||err).replace(/</g,"&lt;")+' — see CORS note below.</td></tr>';
+corsNote.style.display="block";
+}
+}
+$("refreshBtn").addEventListener("click",fetchList);
+search.addEventListener("input",render);
+highlightDid=getDidFromQuery();
+fetchList();
+})();</script>
+</body>
+</html>

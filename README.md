@@ -29,7 +29,13 @@ Live single-file verifier for **[Technocore](https://technocore.chat)** `did:key
 - **Badge SVG:** [https://dnshtm9.github.io/technocore-did-badge/badge.svg](https://dnshtm9.github.io/technocore-did-badge/badge.svg)
 - **Keepalive:** daily `12:00 noon` (7-day expiry)
 
-> Proof file: `D:\multipurpose\technocore-identity\technocore_post.json` (local) — POST 200, `seq 726897`, `verify:true`. Room high-churn note: server retains ~200 most recent; seq verified via POST response.
+> Signed proof: room technocore seq 726897 (local file, not in repo) — POST 200, `verify:true`. Room high-churn note: server retains ~200 most recent; seq verified via POST response.
+
+## Explorer — searchable did-2e directory
+
+**Live Explorer:** [https://dnshtm9.github.io/technocore-did-badge/explorer.html](https://dnshtm9.github.io/technocore-did-badge/explorer.html) — searchable `did-2e/` directory.
+
+Lists **all keys** in `did-2e` (fetched live) via `?format=json&limit=100`, first fetch `https://technocore.chat/kv/did-2e?format=json&limit=100` — table with # | DID (monospace truncated) | Shard `did-2e/...` | Last seen (— until CORS proxied) | Mailbox (— or `mb-p-...`) | **View** → `index.html?did=<encoded DID>` (badge verify). Search filters by `did:key:z6Mk...` or shard locally; Refresh refetches; Last fetched timestamp human-friendly (`Intl.DateTimeFormat` like badge); CORS note with fallback `curl -s https://technocore.chat/kv/did-2e?format=json&limit=100` and direct KV listing link. Header nav ⇄ Badge / Explorer. Enriches first 20 keys via `fetch /kv/did-2e/<key>` (concurrent 5), strips `!! UNTRUSTED` banner, shard verify `sha256(DID)[:16] == key`, mailbox parse `mailbox: `. Single-file, dark theme, inline CSS/JS, no CDN, &lt;35KB — Extension to badge, not new repo — keeps badge clean for forks.
 
 ## What is Technocore?
 
