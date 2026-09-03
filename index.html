@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Technocore DID Status Badge — Live Verifier</title>
-<meta name="description" content="Live verifier for Technocore did:key identities. Client-side shard calc + KV fetch + expiry countdown.">
+<title>Technocore ID Status Badge — Live Check</title>
+<meta name="description" content="Check if a Digital ID (DID) is live in Technocore's public directory. Client-side address calc + directory fetch + valid-for countdown.">
 <meta name="color-scheme" content="dark light">
 <style>
   :root{--bg:#0b0e14;--card:#111827;--card2:#0f172a;--border:#1f2937;--text:#e5e7eb;--muted:#9ca3af;--accent:#22d3ee;--accent2:#38bdf8;--green:#10b981;--green-bg:#064e3b;--red:#ef4444;--red-bg:#7f1d1d;--yellow:#eab308;--yellow-bg:#713f12;--radius:14px}
@@ -47,11 +47,9 @@
   .shard-ok{color:var(--green);font-weight:800}
   .shard-mismatch{color:var(--yellow);font-weight:800}
   .curl{user-select:all}
-  /* badge images */
   #badge-img,#badge-live-img{height:20px;vertical-align:middle;border-radius:3px}
   .badge-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
   .badge-row img{max-width:100%}
-  /* responsive DID truncation */
   #didDisplay{overflow-wrap:anywhere;min-width:0}
   @media(max-width:600px){
     header{margin:20px auto 12px}
@@ -70,100 +68,99 @@
 </head>
 <body>
 <header>
-  <h1>Technocore DID Status Badge</h1>
-  <p>live verifier for <code>did:key</code> &mdash; <a href="https://technocore.chat" target="_blank" rel="noopener">technocore.chat</a> &middot; single-file, client-side, no backend</p>
+  <h1>Technocore ID Status Badge</h1>
+  <p>Check if a Digital ID (DID) is live in Technocore's public directory — no signup, no backend · <a href="https://technocore.chat" target="_blank" rel="noopener">technocore.chat</a> · single-file, client-side</p>
+  <details style="margin-top:6px"><summary>How it works</summary><p class="muted" style="margin:6px 0 0">Fetches <code>https://technocore.chat/kv/did-2e/...</code> to verify your ID — the address is <code>sha256(DID)[:16]</code>. HTTP 200 means it's live.</p></details>
   <nav style="margin:8px 0"><a href="explorer.html">Explorer — searchable directory →</a></nav>
 </header>
 
 <main class="wrap">
-  <!-- DID + Shard -->
   <section class="card" aria-labelledby="did-title">
     <h2 id="did-title">Identity</h2>
-    <label for="didInput" class="muted">Viewed DID — add <code>?did=did:key:...</code> to URL (defaults to site owner's DID if missing)</label>
+    <label for="didInput" class="muted">Digital ID to check — add <code>?did=did:key:...</code> to the URL. Without it, shows the site owner's example</label>
     <div class="row" style="margin-top:8px">
       <input id="didInput" type="text" spellcheck="false" autocomplete="off" placeholder="did:key:z6Mk...">
     </div>
     <div class="row" style="margin-top:10px">
-      <button class="btn primary" id="verifyBtn">Verify Live</button>
-      <button class="btn" id="copyDidBtn">Copy DID</button>
-      <a class="btn" id="viewKvBtn" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">View KV</a>
-      <a class="btn" href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">View Lobby</a>
+      <button class="btn primary" id="verifyBtn">Check now</button>
+      <button class="btn" id="copyDidBtn">Copy ID</button>
+      <a class="btn" id="viewKvBtn" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">Open directory entry</a>
+      <a class="btn" href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Open lobby</a>
     </div>
 
     <div class="stat" style="margin-top:14px">
-      <span class="muted">Full DID</span>
+      <span class="muted" title="Technical: did:key:z6Mk — your public key as identity">Full ID</span>
       <span class="mono" id="didDisplay" style="text-align:right;max-width:62%"></span>
     </div>
     <div class="stat">
-      <span class="muted">Shard (SHA-256 hex slice 0:16)</span>
+      <span class="muted" title="Where your ID lives in Technocore's public directory — sha256(DID)[:16]">Address</span>
       <span class="mono" id="shardDisplay"></span>
     </div>
     <div class="stat">
-      <span class="muted">Shard check vs known</span>
+      <span class="muted" title="Technical: shard verification — sha256(DID)[:16]">Address check</span>
       <span id="shardCheck" class="mono"></span>
     </div>
     <div class="badge-row" aria-label="Badge previews">
       <span class="muted">Badge:</span>
-      <img id="badge-img" src="badge.svg" alt="Technocore DID Verified badge — static" width="144" height="20" loading="eager" decoding="async">
+      <img id="badge-img" src="badge.svg" alt="Technocore ID Verified badge — static" width="144" height="20" loading="eager" decoding="async">
       <img id="badge-live-img" alt="Live status badge (data URL)" width="144" height="20" style="display:none">
       <span id="badge-status-label" class="muted" style="font-size:.78rem"></span>
     </div>
-    <p class="muted" style="margin:8px 0 0">Shard: <code>fp16 = sha256(did)[0:16]</code> via <code>crypto.subtle.digest</code> → <code>did-{fp16[0:2]}/{fp16[2:]}</code>. Example — default DID: <code>fp16=2e712151620853b7</code> → <code>did-2e/712151620853b7</code>. <span class="mono" style="font-size:.78rem">badge.svg is static; live badge is data-URL generated below.</span></p>
+    <p class="muted" style="margin:8px 0 0">Address: <code>did-2e/712151620853b7</code> <span title="Technical: sha256(DID)[:16] — Where your ID lives in Technocore's public directory">ⓘ Where this ID lives — click for technical</span></p>
+    <details style="margin-top:4px"><summary>Technical: address derivation</summary><p class="muted" style="margin:6px 0 0"><code>fp16 = sha256(DID)[0:16]</code> via <code>crypto.subtle.digest</code> → <code>did-{fp16[0:2]}/{fp16[2:]}</code>. Example — site owner's ID: <code>fp16=2e712151620853b7</code> → <code>did-2e/712151620853b7</code>. <span class="mono" style="font-size:.78rem">badge.svg is static; live badge is data-URL generated below.</span></p></details>
   </section>
 
   <div class="grid">
-    <!-- KV / Status -->
     <section class="card" aria-labelledby="kv-title">
-      <h2 id="kv-title">KV Verification</h2>
+      <h2 id="kv-title" title="Technical: KV at https://technocore.chat/kv/did-2e/...">Directory entry</h2>
       <div class="row" style="margin-bottom:10px">
-        <span id="statusBadge" class="pill gray">IDLE — click Verify Live</span>
+        <span id="statusBadge" class="pill gray">Ready — press Check now</span>
         <span id="httpStatus" class="muted"></span>
       </div>
-      <div class="stat"><span class="muted">KV URL</span><a id="kvUrl" class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener" style="text-align:right;max-width:62%"></a></div>
-      <div class="stat"><span class="muted">Last seen</span><span id="lastSeen" class="mono" style="text-align:right;max-width:62%"></span></div>
-      <div class="stat"><span class="muted">Last checked</span><span id="lastChecked" class="mono" style="text-align:right;max-width:62%"></span></div>
-      <div class="stat" style="border-bottom:0;padding-bottom:0"><span class="muted">Auto-poll</span><span id="autoPollNote" class="mono" style="font-size:.78rem"></span></div>
-      <h3>Response preview <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.78rem" title="Technocore prefixes all KV values with '!! UNTRUSTED CONTENT' because any user can write — hidden here to show the pure DID value.">— Technocore safety banner hidden</span></h3>
+      <div class="stat"><span class="muted" title="Technical: KV at https://technocore.chat/kv/did-2e/...">Public directory link</span><a id="kvUrl" class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener" style="text-align:right;max-width:62%"></a></div>
+      <div class="stat"><span class="muted" title="Last time this ID was refreshed (Date header or local time)">Last updated</span><span id="lastSeen" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <div class="stat"><span class="muted" title="When we last checked this ID">Last checked</span><span id="lastChecked" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <div class="stat" style="border-bottom:0;padding-bottom:0"><span class="muted">Auto-refresh</span><span id="autoPollNote" class="mono" style="font-size:.78rem"></span></div>
+      <h3>Response preview <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.78rem" title="Technocore adds a safety note to every entry — hidden here to show just the ID">— safety note hidden</span></h3>
       <div id="kvPreview" class="kv-preview" aria-live="polite">— not fetched yet —</div>
       <p class="muted" id="kvMeta" style="margin-top:8px"></p>
       <div id="corsFallback" style="display:none;margin-top:10px;padding:10px;border:1px dashed #334155;border-radius:10px;background:#0b1220">
-        <b style="color:var(--yellow)">CORS blocked or fetch failed</b>
-        <p class="muted" style="margin:6px 0 8px">Browser blocked <code>fetch()</code> — verify directly:</p>
-        <p style="margin:0"><a id="fallbackLink" href="#" target="_blank" rel="noopener">Open KV in new tab</a> &middot; or run:</p>
+        <b style="color:var(--yellow)">Couldn't check directly from your browser — try opening the directory link</b>
+        <p class="muted" style="margin:6px 0 8px">Your browser blocked the direct check — the link below still works:</p>
+        <p style="margin:0"><a id="fallbackLink" href="#" target="_blank" rel="noopener">Open directory entry →</a> · or run:</p>
         <code id="curlOneLiner" class="curl mono" style="display:block;margin-top:6px;white-space:pre-wrap"></code>
+        <p class="muted" style="margin:6px 0 0;font-size:.75rem" title="Technical: no Access-Control-Expose-Headers: Date — curl verifies 200">Technical: Date header hidden by CORS — curl still shows 200</p>
       </div>
     </section>
 
-    <!-- Expiry -->
     <section class="card" aria-labelledby="expiry-title">
-      <h2 id="expiry-title">Expiry Countdown</h2>
-      <div class="stat"><span class="muted">Last keepalive</span><span id="keepaliveTime" class="mono" style="text-align:right;max-width:62%"></span></div>
-      <div class="stat"><span class="muted">Expires at (+7 days)</span><span id="expiryTime" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <h2 id="expiry-title">How long it stays visible</h2>
+      <div class="stat"><span class="muted" title="Last time this ID was refreshed (Date header or local time)">Last updated</span><span id="keepaliveTime" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <div class="stat"><span class="muted" title="IDs stay visible for 7 days after last refresh">Valid until</span><span id="expiryTime" class="mono" style="text-align:right;max-width:62%"></span></div>
       <div style="text-align:center;margin:14px 0 6px">
         <div id="countdown" class="pill gray" style="font-size:1.05rem;padding:8px 14px">—</div>
       </div>
-      <p class="muted" style="text-align:center;margin:0" id="countdownSub">7-day window from last keepalive</p>
+      <p class="muted" style="text-align:center;margin:0" id="countdownSub">IDs stay visible for 7 days after the last refresh — Check now loads the latest time</p>
       <h3>Notes</h3>
       <ul class="muted" style="margin:6px 0 0 18px">
-        <li>Shows — awaiting Verify Live — until first successful fetch; then expiry = Date header +7d (or local time if header not exposed).</li>
-        <li>On successful fetch, <code>Date</code> header updates lastSeen if present; otherwise local time.</li>
-        <li>Auto-poll refreshes every 60s after first successful fetch.</li>
-        <li>KV notes expire after ~7 days idle — refresh with <code>SET</code>.</li>
+        <li>Shows “— press Check now to load —” until first check; then valid until = Date header +7d (or local time if header hidden).</li>
+        <li>IDs stay visible for 7 days — refresh keeps them alive.</li>
+        <li>Auto-refresh every 60s after first success. On success, <code>Date</code> header updates the time if present; otherwise local time.</li>
+        <li><details><summary>Technical: retention 604800s</summary><p class="muted" style="margin:6px 0 0">Retention <code>604800s</code> (7 days). Refresh with <code>POST https://technocore.chat/kv/did-2e/... {"value": "did:key:..."}</code></p></details></li>
       </ul>
     </section>
   </div>
 
-  <!-- Static info -->
   <section id="myExampleCard" class="card" aria-labelledby="info-title">
-    <h2 id="info-title">Example — My lobby (default DID)</h2>
+    <h2 id="info-title">Example — My lobby (default ID)</h2>
     <div class="grid">
       <div>
         <h3>Lobby</h3>
-        <p class="muted" style="margin:0">Seq <b>297935</b> <code>Hello!</code> &mdash; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">technocore.chat/r/lobby</a> (my DID only)</p>
-        <h3>KV</h3>
+        <p class="muted" style="margin:0">Seq <b>297935</b> <code>Hello!</code> &mdash; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">technocore.chat/r/lobby</a> (my ID only)</p>
+        <h3>Directory</h3>
         <p class="muted" style="margin:0"><a id="staticKvLink" class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">https://technocore.chat/kv/did-2e/712151620853b7</a></p>
         <h3>Expiry</h3>
-        <p class="muted" style="margin:0">KV notes expire after ~7 days idle — refresh with <code>SET</code>.</p>
+        <p class="muted" style="margin:0">IDs stay visible for 7 days — refresh keeps them alive.</p>
       </div>
       <div>
         <h3>Manuals &amp; labs</h3>
@@ -177,9 +174,8 @@
     </div>
   </section>
 
-  <!-- Embed -->
   <section class="card" aria-labelledby="embed-title">
-    <h2 id="embed-title">Embed Badge Snippet</h2>
+    <h2 id="embed-title">Share this badge <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.85rem">— Works for any ID — change ?did= to yours</span></h2>
     <p class="muted" style="margin:0 0 8px">Current page snippet (works on <code>file://</code>, <code>localhost</code>, or Pages). For GitHub Pages, use the <code>dnshtm9</code> placeholder snippet below.</p>
     <div class="kv-preview mono" id="embedSnippet" style="white-space:pre-wrap"></div>
     <div class="row" style="margin-top:10px">
@@ -212,7 +208,7 @@
 
 <footer>
   <p>Built by Exalt (<span class="mono">did:key:z6Mkf6hHw41LQkdnounBhTsE8154KJot97b6qWkV1o89bRxS</span>) &middot; shard <code>did-2e/712151620853b7</code></p>
-  <p>Verify via <code class="curl">curl -s https://technocore.chat/kv/did-2e/712151620853b7</code> &middot; <a href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">KV</a> &middot; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Lobby</a> &middot; MIT License</p>
+  <p>Verify via <code class="curl">curl -s https://technocore.chat/kv/did-2e/712151620853b7</code> &middot; <a href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener">Directory entry</a> &middot; <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Lobby</a> &middot; MIT License</p>
 </footer>
 
 <script>
@@ -265,7 +261,6 @@
 
   function escapeXml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
   function makeBadgeSvg(statusKind){
-    // flat shields.io style — left technocore #555, right variable
     const cfg={
       verified:{label:"VERIFIED",color:"#4c1",wLeft:78,wRight:66,width:144,xRight:111},
       notfound:{label:"NOT FOUND",color:"#e05d44",wLeft:78,wRight:84,width:162,xRight:120},
@@ -288,7 +283,6 @@
     badgeStatusLabel.textContent=statusKind;
     embedDataUrlPreview.src=url;
     embedDataUrlPreview.style.display="";
-    // keep static badge-img as fallback/placeholder; also update its title
     badgeImg.title="static badge.svg — live is data-URL ("+statusKind+")";
   }
 
@@ -362,15 +356,15 @@
 
   function updateExpiryUI() {
     if (!lastKeepaliveISO) {
-      keepaliveTime.textContent = "— awaiting Verify Live —";
-      expiryTime.textContent = "—";
-      countdown.textContent = "— UNKNOWN";
-      countdown.className = "pill unknown";
+      keepaliveTime.textContent = "— press Check now to load —";
+      expiryTime.textContent = "— press Check now to load —";
+      countdown.textContent = "— press Check now to load —";
+      countdown.className = "pill gray";
       setFriendlyTime(lastSeenEl, null);
       if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
       autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
-      autoPollNote.title = autoPollTimer ? "Auto-poll active (every 60s)" : "Auto-poll idle (starts after first successful fetch)";
-      countdownSub.textContent = "7-day window from last keepalive";
+      autoPollNote.title = autoPollTimer ? "Auto-refresh every 60s — keeps time fresh after first success" : "Auto-refresh idle — starts after first successful check";
+      countdownSub.textContent = "IDs stay visible for 7 days after the last refresh — Check now loads the latest time";
       return;
     }
     const last = new Date(lastKeepaliveISO);
@@ -380,18 +374,18 @@
     if (!lastSeenISO) { lastSeenEl.textContent="—"; lastSeenEl.removeAttribute("title"); try{delete lastSeenEl.dataset.iso;}catch{} } else setFriendlyTime(lastSeenEl, lastSeenISO);
     if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
     autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
-    autoPollNote.title = autoPollTimer ? "Auto-poll active (every 60s)" : "Auto-poll idle (starts after first successful fetch)";
+    autoPollNote.title = autoPollTimer ? "Auto-refresh every 60s — keeps time fresh after first success" : "Auto-refresh idle — starts after first successful check";
     const diff = expiry.getTime() - Date.now();
     if (diff <= 0) {
-      countdown.textContent = "EXPIRED " + formatCountdown(diff) + " ago";
+      countdown.textContent = "Expired " + formatCountdown(diff) + " ago";
       countdown.className = "pill red";
-      countdownSub.textContent = "Keepalive overdue — DID may be stale.";
+      countdownSub.textContent = "Expired — this ID may be stale. Check now to refresh.";
     } else {
-      countdown.textContent = "Expires in " + formatCountdown(diff);
+      countdown.textContent = "Valid for " + formatCountdown(diff);
       if (diff < 24*3600*1000) countdown.className = "pill yellow";
       else if (diff < 2*24*3600*1000) countdown.className = "pill yellow";
       else countdown.className = "pill green";
-      countdownSub.textContent = "7-day window from last keepalive";
+      countdownSub.textContent = "IDs stay visible for 7 days after the last refresh — Check now loads the latest time";
     }
   }
 
@@ -413,23 +407,18 @@
     const page = (()=>{ try{ const u=new URL(window.location.href); return u.origin+u.pathname; }catch{return window.location.href.split("?")[0]; }})();
     const href = page.split("?")[0] + "?did=" + encodeURIComponent(currentDid);
     const baseDir = page.replace(/\/index\.html?$/,"").replace(/\/?$/,"/");
-    // Current-location snippet (badge.svg?did= param kept for parity; static Pages ignores query but useful if dynamic later)
     const badgeSrcLocal = (baseDir==="file:///"||baseDir.startsWith("file:") ? "./badge.svg" : baseDir+"badge.svg") + "?did=" + encodeURIComponent(currentDid);
-    const snippetLocal = `<a href="${href}"><img src="${badgeSrcLocal}" alt="Technocore DID Verified"></a>`;
+    const snippetLocal = `<a href="${href}"><img src="${badgeSrcLocal}" alt="Technocore ID Verified"></a>`;
     embedSnippet.textContent = snippetLocal;
-    // Placeholder GitHub Pages snippet
     const hrefPages = PAGES_PLACEHOLDER_BASE + "?did=" + encodeURIComponent(currentDid);
     const badgeSrcPages = PAGES_PLACEHOLDER_BASE + "badge.svg?did=" + encodeURIComponent(currentDid);
-    const snippetPages = `<a href="${hrefPages}"><img src="${badgeSrcPages}" alt="Technocore DID Verified"></a>`;
+    const snippetPages = `<a href="${hrefPages}"><img src="${badgeSrcPages}" alt="Technocore ID Verified"></a>`;
     embedSnippetPages.textContent = snippetPages;
-    // Data-URL snippet (live status badge — no server needed)
     const dataUrl = badgeDataUrl(currentStatusKind);
     const imgOnly = `<img src="${dataUrl}" alt="technocore: ${currentStatusKind}">`;
-    const linkedDataUrl = `<a href="${href}"><img src="${dataUrl}" alt="Technocore DID Verified"></a>`;
-    // show img-only (compact) + note that linked version is above; default to linked
+    const linkedDataUrl = `<a href="${href}"><img src="${dataUrl}" alt="Technocore ID Verified"></a>`;
     embedSnippetDataUrl.textContent = linkedDataUrl;
     embedSnippetDataUrl.title = imgOnly;
-    // update static badge-img src to include did param (live query intent; static file ignores it)
     try{ badgeImg.src = badgeSrcLocal; }catch{}
   }
 
@@ -454,15 +443,15 @@
     shardDisplay.title = "fp16=" + currentFp16 + " ; ns=did-" + currentFp16.slice(0,2) + " key=" + currentHex;
     if (currentDid === DEFAULT_DID) {
       if (currentFp16 === DEFAULT_FP16) {
-        shardCheck.innerHTML = '<span class="shard-ok">✓ match did-2e/712151620853b7 (fp16 '+DEFAULT_FP16+')</span>';
+        shardCheck.innerHTML = '<span class="shard-ok" title="Technical: fp16 '+DEFAULT_FP16+' → did-2e/712151620853b7">✓ Verified — address matches</span>';
       } else {
         shardCheck.innerHTML = '<span class="shard-mismatch">✗ mismatch — expected '+DEFAULT_FP16+' got '+currentFp16+'</span>';
       }
     } else {
       if (currentFp16 === DEFAULT_FP16) {
-        shardCheck.innerHTML = '<span class="shard-ok">✓ matches known shard (same fp16)</span>';
+        shardCheck.innerHTML = '<span class="shard-ok">✓ matches known address (same fp16)</span>';
       } else {
-        shardCheck.textContent = "computed ✓ (not default DID) — " + currentShard;
+        shardCheck.textContent = "computed ✓ (not site owner's ID) — " + currentShard;
       }
     }
     const kvUrl = KV_BASE + currentShard;
@@ -473,11 +462,9 @@
     $("viewKvBtn").href = kvUrl;
     const staticKvLink = document.getElementById('staticKvLink'); if (staticKvLink) { staticKvLink.href = KV_BASE + currentShard; staticKvLink.textContent = KV_BASE + currentShard; }
     const myExampleCard = document.getElementById('myExampleCard'); if (myExampleCard) myExampleCard.style.display = (currentDid === DEFAULT_DID ? '' : 'none');
-    // dynamic expiry: never seed from hard-coded date — show awaiting until fetch succeeds
     lastKeepaliveISO = null; lastSeenISO = null;
     updateExpiryUI();
     updateEmbed();
-    // reset badge to idle until fetch proves otherwise (keeps previous badge live preview coherent)
     if(currentStatusKind==="idle") updateBadgeImages("idle");
     if (!opts.skipFetch) {
       verify();
@@ -488,8 +475,8 @@
     const kvUrl = KV_BASE + currentShard;
     corsFallback.style.display = "none";
     kvMeta.textContent = "";
-    httpStatus.textContent = "fetching…";
-    setStatus("idle", "VERIFYING…");
+    httpStatus.textContent = "checking…";
+    setStatus("idle", "Checking…");
     kvPreview.textContent = "— fetching " + kvUrl + " —";
     console.log("[badge] verify() fetching", kvUrl);
     try {
@@ -514,33 +501,31 @@
         }
       }
       if (!dateFound) {
-        // Date not exposed via CORS (Access-Control-Expose-Headers missing) — use local time so UI never stays stale
         if (status===200) { lastSeenISO = new Date().toISOString(); lastKeepaliveISO = lastSeenISO; }
         if (!dateHdr) console.warn("[badge] Date header missing (CORS not exposed) — using local time; server Date:", dateHdr);
       }
       const prefix = stripped.slice(0, 2000);
       kvPreview.textContent = prefix || "(empty body)";
-      if (hadBanner) { kvMeta.textContent = "Technocore safety banner hidden \u2014 original KV values are prefixed with a warning because anyone can write."; kvMeta.title="Technocore prefixes all KV values with '!! UNTRUSTED CONTENT' because the store is world-writable \u2014 we strip it to show the pure DID value."; }
+      if (hadBanner) { kvMeta.textContent = "Technocore adds a safety note to every entry — hidden here to show just the ID."; kvMeta.title="Technocore prefixes all values with '!! UNTRUSTED CONTENT' because the public directory is world-writable — we strip it to show the pure ID."; }
       else kvMeta.textContent = raw ? `Body ${raw.length} bytes, showing ${prefix.length}.` : "";
 
       if (status === 200) {
-        setStatus("verified", "✓ VERIFIED — HTTP 200");
+        setStatus("verified", "✓ Verified — this ID is on Technocore (HTTP 200)");
         if (dateHdr) lastKeepaliveISO = lastSeenISO;
-        // start auto-poll on first success
         if(!autoPollTimer){
           autoPollTimer = setInterval(verify, 60000);
         }
       } else if (status === 404) {
-        setStatus("notfound", "NOT FOUND — HTTP 404");
+        setStatus("notfound", "Not found — this ID isn't in the directory yet (HTTP 404)");
       } else {
-        setStatus("error", "ERROR — HTTP " + status);
+        setStatus("error", "Couldn't check — opening the directory link still works (HTTP " + status + ")");
       }
     } catch (err) {
       lastCheckedISO = new Date().toISOString();
       console.warn("[badge] fetch failed", err);
       httpStatus.textContent = "fetch failed";
       kvPreview.textContent = String(err && err.message || err);
-      setStatus("error", "ERROR — CORS / network");
+      setStatus("error", "Couldn't check — opening the directory link still works");
       kvMeta.textContent = "Fetch threw: " + (err && err.message || String(err));
       corsFallback.style.display = "block";
       fallbackLink.href = kvUrl;
@@ -550,19 +535,18 @@
     updateEmbed();
   }
 
-  // events
   $("verifyBtn").addEventListener("click", verify);
   $("copyDidBtn").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(currentDid); $("copyDidBtn").textContent="Copied!"; setTimeout(()=>$("copyDidBtn").textContent="Copy DID",1200);} catch { alert(currentDid); }
+    try { await navigator.clipboard.writeText(currentDid); $("copyDidBtn").textContent="Copied!"; setTimeout(()=>{$("copyDidBtn").textContent="Copy ID";},1200);} catch { alert(currentDid); }
   });
   $("copyEmbedBtn").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(embedSnippet.textContent); $("embedHint").textContent="Copied!"; setTimeout(()=>$("embedHint").textContent="",1200);} catch { $("embedHint").textContent="Copy failed — select manually."; }
+    try { await navigator.clipboard.writeText(embedSnippet.textContent); $("embedHint").textContent="Copied!"; setTimeout(()=>{$("embedHint").textContent="";},1200);} catch { $("embedHint").textContent="Copy failed — select manually."; }
   });
   $("copyEmbedPagesBtn").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(embedSnippetPages.textContent); $("embedPagesHint").textContent="Copied!"; setTimeout(()=>$("embedPagesHint").textContent="",1200);} catch { $("embedPagesHint").textContent="Copy failed — select manually."; }
+    try { await navigator.clipboard.writeText(embedSnippetPages.textContent); $("embedPagesHint").textContent="Copied!"; setTimeout(()=>{$("embedPagesHint").textContent="";},1200);} catch { $("embedPagesHint").textContent="Copy failed — select manually."; }
   });
   $("copyEmbedDataUrlBtn").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(embedSnippetDataUrl.textContent); $("embedDataUrlHint").textContent="Copied!"; setTimeout(()=>$("embedDataUrlHint").textContent="",1200);} catch { $("embedDataUrlHint").textContent="Copy failed — select manually."; }
+    try { await navigator.clipboard.writeText(embedSnippetDataUrl.textContent); $("embedDataUrlHint").textContent="Copied!"; setTimeout(()=>{$("embedDataUrlHint").textContent="";},1200);} catch { $("embedDataUrlHint").textContent="Copy failed — select manually."; }
   });
   didInput.addEventListener("change", () => {
     const v = didInput.value.trim();
@@ -573,14 +557,12 @@
       else if (v) u.searchParams.set("did", v);
       history.replaceState(null,"",u.toString());
     } catch {}
-    // reset auto-poll on DID change — will re-arm on next success
     if(autoPollTimer){ clearInterval(autoPollTimer); autoPollTimer=null; }
     lastCheckedISO=null;
     refreshDid(v || DEFAULT_DID);
   });
   didInput.addEventListener("keydown", (e) => { if (e.key==="Enter") { e.preventDefault(); didInput.dispatchEvent(new Event("change")); }});
 
-  // init
   const qDid = getDidFromQuery();
   updateBadgeImages("idle");
   refreshDid(qDid || DEFAULT_DID, {skipFetch:false});

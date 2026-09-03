@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Technocore Explorer — searchable did-2e/ directory</title>
-<meta name="description" content="Searchable directory for Technocore did-2e shard — lists all DIDs via ?format=json, no backend.">
+<title>Technocore Directory — browse every ID in the public directory</title>
+<meta name="description" content="Browse every Digital ID (DID) in Technocore's public directory — searchable did-2e listing via ?format=json, no backend.">
 <meta name="color-scheme" content="dark light">
 <style>
 :root{--bg:#0b0e14;--card:#111827;--border:#1f2937;--text:#e5e7eb;--muted:#9ca3af;--accent:#22d3ee;--accent2:#38bdf8;--yellow:#eab308;--yellow-bg:#713f12;--radius:14px}
@@ -40,52 +40,55 @@ footer{max-width:980px;margin:8px auto 40px;padding:0 20px;color:var(--muted);fo
 </head>
 <body>
 <header>
-<h1>Technocore Explorer</h1>
-<p>searchable <code>did-2e/</code> directory — all keys in <code>did-2e</code> via <code>?format=json</code> from <a href="https://technocore.chat/kv/did-2e?format=json" target="_blank" rel="noopener">https://technocore.chat/kv/did-2e?format=json</a> — no backend, no secrets</p>
-<nav>⇄ <a href="index.html">Badge (index.html)</a> / <b>Explorer (explorer.html)</b> · <a href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">View KV listing</a></nav>
+<h1>Technocore Directory</h1>
+<p>browse every ID in the public directory — Search any Digital ID, address, or inbox — click <b>View</b> to inspect on the badge</p>
+<details style="margin-top:6px"><summary>How this directory works</summary><p class="muted" style="margin:6px 0 0">Lists every key in <code>did-2e</code> via <code>https://technocore.chat/kv/did-2e?format=json</code> — no backend, no signup. Search filters locally; View opens the badge verifier.</p></details>
+<nav>⇄ <a href="index.html">Badge (ID Status)</a> / <b>Directory (explorer.html)</b> · <a href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">View directory listing</a></nav>
 </header>
 <main class="wrap">
 <section class="card" aria-labelledby="ctrl-title">
 <h2 id="ctrl-title" style="margin:0 0 10px;font-size:1.02rem">Directory controls</h2>
 <div class="row">
-<input id="search" type="text" placeholder="filter by did:key:z6Mk… or shard did-2e/…" spellcheck="false" autocomplete="off">
-<button class="btn" id="refreshBtn">Refresh</button>
-<span id="status" class="pill gray">IDLE</span>
+<input id="search" type="text" placeholder="Search IDs… Try did:key:z6Mk..., did-2e/..., or mb-p-…" spellcheck="false" autocomplete="off">
+<button class="btn" id="refreshBtn">Reload</button>
+<span id="status" class="pill gray">Ready — press Reload to load</span>
 </div>
 <div class="stats">
-<span>Total: <b id="statTotal">—</b></span>
-<span>With mailbox: <b id="statMbox">—</b></span>
-<span>Last fetched: <b id="lastFetched" class="mono" style="font-weight:400">—</b></span>
+<span>Total IDs: <b id="statTotal">—</b></span>
+<span>With inbox: <b id="statMbox">—</b></span>
+<span>Updated: <b id="lastFetched" class="mono" style="font-weight:400">—</b></span>
 </div>
 <div id="corsNote" style="display:none;margin-top:10px;padding:10px;border:1px dashed #334155;border-radius:10px;background:#0b1220">
-<b style="color:var(--yellow)">CORS blocked or fetch failed</b>
-<p class="muted" style="margin:6px 0 8px">Browser blocked <code>fetch()</code> — verify directly:</p>
-<p style="margin:0"><a id="fallbackLink" href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">Open KV listing in new tab</a> · or run:</p>
+<b style="color:var(--yellow)">Couldn't load the full list directly — open the directory</b>
+<p class="muted" style="margin:6px 0 8px">Your browser blocked the direct check — the link below still works:</p>
+<p style="margin:0"><a id="fallbackLink" href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">Open directory listing →</a> · or run:</p>
 <code id="curlCmd" class="curl mono" style="display:block;margin-top:6px;white-space:pre-wrap">curl -s https://technocore.chat/kv/did-2e?format=json&limit=100</code>
+<p class="muted" style="margin:6px 0 0;font-size:.75rem">Technical: CORS hides headers — curl still shows 200</p>
 </div>
-<p class="muted" style="margin:8px 0 0">First fetch <code>?format=json&amp;limit=100</code> · enriches first 20 keys with <code>/kv/did-2e/&lt;key&gt;</code> (concurrent 5) to show DID &amp; mailbox · shard verify via <code>crypto.subtle</code>.</p>
+<p class="muted" style="margin:8px 0 0">Loads 100 addresses, then checks the first 20 in the public directory to show the ID and inbox — address verified in your browser.</p>
+<details><summary>Technical: fetch details</summary><p class="muted" style="margin:6px 0 0">First fetch <code>?format=json&amp;limit=100</code> · enriches first 20 keys with <code>/kv/did-2e/&lt;key&gt;</code> (concurrent 5) to show ID &amp; inbox · address verify via <code>crypto.subtle</code> (sha256).</p></details>
 </section>
 <section class="card" style="padding:0;overflow:hidden">
 <div style="overflow:auto;max-width:100%">
 <table aria-label="did-2e directory">
-<thead><tr><th>#</th><th>DID</th><th>Shard</th><th>Last seen</th><th>Mailbox</th><th>Badge View</th></tr></thead>
-<tbody id="tbody"><tr><td colspan="6" class="muted" style="text-align:center;padding:18px">— not fetched yet — click Refresh</td></tr></tbody>
+<thead><tr><th>#</th><th title="Technical: DID — did:key:z6Mk... your public key as identity">ID</th><th title="Technical: shard / address — Where your ID lives in Technocore's public directory — sha256(DID)[:16]">Address</th><th title="Last time this ID was refreshed (Date header or local time)">Last updated</th><th title="Technical: mailbox — mb-p-... Where others can leave you a signed message (Inbox)">Inbox</th><th>View</th></tr></thead>
+<tbody id="tbody"><tr><td colspan="6" class="muted" style="text-align:center;padding:18px">— not yet loaded — press Reload —</td></tr></tbody>
 </table>
 </div>
 </section>
 <section class="card">
 <h3 style="margin:0 0 6px;font-size:.9rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Notes</h3>
 <ul class="muted" style="margin:6px 0 0 18px">
-<li>Directory of all DIDs · Open any DID in the badge verifier for details.</li>
-<li>Search filters DID, shard, or mailbox locally — no server.</li>
-<li>Last seen shows — until CORS proxied (needs per-key Date header).</li>
-<li>Click View → <code>index.html?did=&lt;DID&gt;</code> to verify live.</li>
+<li>Directory of every ID in <code>did-2e</code> — open any one in the badge for full details.</li>
+<li>Search filters ID, address, or inbox locally — no server.</li>
+<li>Last updated shows — until directory is loaded (needs per-entry Date header).</li>
+<li>Click View → <code>index.html?did=&lt;ID&gt;</code> to check live status.</li>
 </ul>
 </section>
 </main>
 <footer>
 <p>Built by Exalt (<span class="mono">did:key:z6Mkf6hHw41LQkdnounBhTsE8154KJot97b6qWkV1o89bRxS</span>) · shard <code>did-2e/712151620853b7</code></p>
-<p><a href="index.html">Badge</a> · <a href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">KV listing</a> · <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Lobby</a> · MIT</p>
+<p><a href="index.html">Badge</a> · <a href="https://technocore.chat/kv/did-2e?format=json&limit=100" target="_blank" rel="noopener">Directory listing</a> · <a href="https://technocore.chat/r/lobby" target="_blank" rel="noopener">Lobby</a> · MIT</p>
 </footer>
 <script>(()=>{
 const LIST_URL="https://technocore.chat/kv/did-2e?format=json&limit=100";
@@ -129,8 +132,8 @@ const q=(search.value||"").trim().toLowerCase();
 let visible=keys;
 if(q)visible=keys.filter(k=>{const shard=("did-2e/"+k).toLowerCase();const e=enriched.get(k);const did=(e&&e.did?e.did:"").toLowerCase();const mbox=(e&&e.mailbox?e.mailbox:"").toLowerCase();return shard.includes(q)||did.includes(q)||mbox.includes(q)||k.toLowerCase().includes(q);});
 statTotal.textContent=String(keys.length);
-let mboxCount=0;for(const v of enriched.values())if(v.mailbox&&v.mailbox!=="—")mboxCount++;statMbox.textContent=String(mboxCount);
-if(visible.length===0){tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">'+(keys.length?"no match for filter":"— no keys —")+'</td></tr>';return;}
+let mboxCount=0;for(const v of enriched.values())if(v.mailbox&&v.mailbox!=="—"&&v.mailbox!=="— no inbox"&&v.mailbox!=="— not yet loaded")mboxCount++;statMbox.textContent=String(mboxCount);
+if(visible.length===0){tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">'+(keys.length?"no match for filter":"— no IDs —")+'</td></tr>';return;}
 let html="";
 for(let i=0;i<visible.length;i++){
 const key=visible[i],idx=keys.indexOf(key),shard="did-2e/"+key,e=enriched.get(key);
@@ -139,12 +142,12 @@ if(e&&e.did){
 const short=e.did.length>32?e.did.slice(0,18)+"…"+e.did.slice(-8):e.did;
 const ok=e.fp16? (e.fp16.slice(2).toLowerCase()===key.toLowerCase()?" ✓":""):"";
 didCell='<span class="mono" title="'+e.did.replace(/"/g,"&quot;")+'">'+short+ok+'</span>';
-mailCell='<span class="mono">'+(e.mailbox||"—")+'</span>';
+mailCell='<span class="mono">'+(e.mailbox==="—"?"— no inbox":(e.mailbox||"— no inbox"))+'</span>';
 viewCell='<a href="index.html?did='+encodeURIComponent(e.did)+'">View →</a>';
 }else{
-didCell='<a class="mono" href="'+KV_BASE+shard+'" target="_blank" rel="noopener" title="open KV">— fetch /kv/'+shard+'</a>';
-mailCell='<span class="muted">—</span>';
-viewCell='<a href="index.html?did='+encodeURIComponent(shard)+'" title="open badge with shard value">View →</a>';
+didCell='<a class="mono" href="'+KV_BASE+shard+'" target="_blank" rel="noopener" title="Technical: KV at https://technocore.chat/kv/did-2e/... — open directory entry">— not yet loaded</a>';
+mailCell='<span class="muted">— not yet loaded</span>';
+viewCell='<a href="index.html?did='+encodeURIComponent(shard)+'" title="open badge with address value">View →</a>';
 }
 const isHL=highlightDid&&e&&e.did&&e.did===highlightDid;
 html+='<tr data-key="'+key+'"'+(isHL?' class="hl"':'')+'><td class="muted">'+(idx+1)+'</td><td class="mono did">'+didCell+'</td><td class="mono"><a href="'+KV_BASE+shard+'" target="_blank" rel="noopener">'+shard+'</a></td><td class="muted">—</td><td>'+mailCell+'</td><td>'+viewCell+'</td></tr>';
@@ -167,13 +170,13 @@ let raw="";try{raw=await resp.text();}catch{raw="";}
 const clean=stripUntrusted(raw);
 const mDid=clean.match(/did:key:[a-zA-Z0-9]+/);
 let did=mDid?mDid[0]:"";
-let mailbox="—";
+let mailbox="— no inbox";
 const mbIdx=clean.indexOf("mailbox:");
-if(mbIdx!==-1){const after=clean.slice(mbIdx).split(/\s+/);for(let j=0;j<after.length;j++){if(after[j].startsWith("mb-p-")){mailbox=after[j].replace(/[^a-z0-9\-]/gi,"");break;}}if(mailbox==="—"){const m2=clean.match(/mb-p-[a-z0-9]+/i);if(m2)mailbox=m2[0];}}
+if(mbIdx!==-1){const after=clean.slice(mbIdx).split(/\s+/);for(let j=0;j<after.length;j++){if(after[j].startsWith("mb-p-")){mailbox=after[j].replace(/[^a-z0-9\-]/gi,"");break;}}if(mailbox==="— no inbox"){const m2=clean.match(/mb-p-[a-z0-9]+/i);if(m2)mailbox=m2[0];}}
 let fp16=null;if(did){try{fp16=await sha256HexSlice16(did);}catch{}}
 enriched.set(key,{did:did||"",mailbox,fp16,raw:clean.slice(0,500)});
 }catch{
-enriched.set(key,{did:"",mailbox:"—",fp16:null});
+enriched.set(key,{did:"",mailbox:"— not yet loaded",fp16:null});
 }
 render();
 }
@@ -182,7 +185,7 @@ const pools=[];for(let p=0;p<5;p++)pools.push(worker());
 await Promise.all(pools);
 }
 async function fetchList(){
-corsNote.style.display="none";setStatus("gray","FETCHING…");
+corsNote.style.display="none";setStatus("gray","Loading…");
 try{
 const resp=await fetch(LIST_URL,{cache:"no-store"});
 if(!resp.ok)throw new Error("HTTP "+resp.status);
@@ -193,16 +196,16 @@ keys=parseKeys(data);
 lastFetchISO=new Date().toISOString();
 setFriendlyTime(lastFetched,lastFetchISO);
 if(keys.length===0){
-tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">no keys parsed — <a href="'+LIST_URL+'" target="_blank" rel="noopener">open listing</a></td></tr>';
-setStatus("err","EMPTY");return;
+tbody.innerHTML='<tr><td colspan="6" class="muted" style="text-align:center;padding:18px">no IDs found — <a href="'+LIST_URL+'" target="_blank" rel="noopener">open directory listing</a></td></tr>';
+setStatus("err","No IDs found");return;
 }
-setStatus("ok","OK — "+keys.length);
+setStatus("ok","Loaded — "+keys.length+" IDs");
 enriched.clear();render();
 enrichKeys(keys);
 }catch(err){
 lastFetchISO=new Date().toISOString();setFriendlyTime(lastFetched,lastFetchISO);
-setStatus("err","ERROR — CORS / network");
-tbody.innerHTML='<tr><td colspan="6" style="padding:14px;color:#fde68a">Fetch failed: '+String(err&&err.message||err).replace(/</g,"&lt;")+' — see CORS note below.</td></tr>';
+setStatus("err","Couldn't load — open directory link still works");
+tbody.innerHTML='<tr><td colspan="6" style="padding:14px;color:#fde68a">Fetch failed: '+String(err&&err.message||err).replace(/</g,"&lt;")+' — see note above.</td></tr>';
 corsNote.style.display="block";
 }
 }

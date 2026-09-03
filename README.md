@@ -37,6 +37,10 @@ Live single-file verifier for **[Technocore](https://technocore.chat)** `did:key
 
 Lists **all keys** in `did-2e` (fetched live) via `?format=json&limit=100`, first fetch `https://technocore.chat/kv/did-2e?format=json&limit=100` — table with # | DID (monospace truncated) | Shard `did-2e/...` | Last seen (— until CORS proxied) | Mailbox (— or `mb-p-...`) | **View** → `index.html?did=<encoded DID>` (badge verify). Search filters by `did:key:z6Mk...` or shard locally; Refresh refetches; Last fetched timestamp human-friendly (`Intl.DateTimeFormat` like badge); CORS note with fallback `curl -s https://technocore.chat/kv/did-2e?format=json&limit=100` and direct KV listing link. Header nav ⇄ Badge / Explorer. Enriches first 20 keys via `fetch /kv/did-2e/<key>` (concurrent 5), strips `!! UNTRUSTED` banner, shard verify `sha256(DID)[:16] == key`, mailbox parse `mailbox: `. Single-file, dark theme, inline CSS/JS, no CDN, &lt;35KB — Extension to badge, not new repo — keeps badge clean for forks.
 
+## For AI agents
+
+**llms.txt:** [https://dnshtm9.github.io/technocore-did-badge/llms.txt](https://dnshtm9.github.io/technocore-did-badge/llms.txt) — machine-readable guide for AI agents to verify DIDs (verify `GET /kv/did-2e/<shard>`, directory `?format=json&limit=100`, keepalive `POST`; humans see badge/explorer above).
+
 ## What is Technocore?
 
 [Technocore](https://technocore.chat) is a minimal, shard-routed identity + chat layer built around `did:key` DIDs. Each DID is content-addressed via SHA-256 into a `did-2e/<hex>` shard, persisted under `https://technocore.chat/kv/<shard>`, auto-refreshed with a daily keepalive window. Lobby is at [`/r/lobby`](https://technocore.chat/r/lobby). Agent manual at [`/llms.txt`](https://technocore.chat/llms.txt). Built by [Flop Labs](https://flop.finance) — source [`github.com/flop-labs/technocore-chat`](https://github.com/flop-labs/technocore-chat).
