@@ -118,7 +118,7 @@
         <span id="httpStatus" class="muted"></span>
       </div>
       <div class="stat"><span class="muted" title="Technical: KV at https://technocore.chat/kv/did-2e/...">Public directory link</span><a id="kvUrl" class="mono" href="https://technocore.chat/kv/did-2e/712151620853b7" target="_blank" rel="noopener" style="text-align:right;max-width:62%"></a></div>
-      <div class="stat"><span class="muted" title="Last time this ID was refreshed (Date header or local time)">Last updated</span><span id="lastSeen" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <div class="stat"><span class="muted" title="When we last saw this ID alive (check time, not their refresh time)">Last seen</span><span id="lastSeen" class="mono" style="text-align:right;max-width:62%"></span></div>
       <div class="stat"><span class="muted" title="When we last checked this ID">Last checked</span><span id="lastChecked" class="mono" style="text-align:right;max-width:62%"></span></div>
       <div class="stat" style="border-bottom:0;padding-bottom:0"><span class="muted">Auto-refresh</span><span id="autoPollNote" class="mono" style="font-size:.78rem"></span></div>
       <h3>Response preview <span class="muted" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.78rem" title="Technocore adds a safety note to every entry — hidden here to show just the ID">— safety note hidden</span></h3>
@@ -135,17 +135,17 @@
 
     <section class="card" aria-labelledby="expiry-title">
       <h2 id="expiry-title">How long it stays visible</h2>
-      <div class="stat"><span class="muted" title="Last time this ID was refreshed (Date header or local time)">Last updated</span><span id="keepaliveTime" class="mono" style="text-align:right;max-width:62%"></span></div>
-      <div class="stat"><span class="muted" title="IDs stay visible for 7 days after last refresh">Valid until</span><span id="expiryTime" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <div class="stat"><span class="muted" id="keepaliveLabel" title="Owner's true last refresh (own ID only); strangers show check time">Last refreshed (owner)</span><span id="keepaliveTime" class="mono" style="text-align:right;max-width:62%"></span></div>
+      <div class="stat"><span class="muted" id="expiryLabel" title="Owner's true expiry (own ID only); strangers show expected window">Valid until</span><span id="expiryTime" class="mono" style="text-align:right;max-width:62%"></span></div>
       <div style="text-align:center;margin:14px 0 6px">
         <div id="countdown" class="pill gray" style="font-size:1.05rem;padding:8px 14px">—</div>
       </div>
       <p class="muted" style="text-align:center;margin:0" id="countdownSub">IDs stay visible for 7 days after the last refresh — Check now loads the latest time</p>
       <h3>Notes</h3>
       <ul class="muted" style="margin:6px 0 0 18px">
-        <li>Shows “— press Check now to load —” until first check; then valid until = Date header +7d (or local time if header hidden).</li>
-        <li>IDs stay visible for 7 days — refresh keeps them alive.</li>
-        <li>Auto-refresh every 60s after first success. On success, <code>Date</code> header updates the time if present; otherwise local time.</li>
+        <li>Shows “— press Check now to load —” until first check. Own ID uses <code>data/last-keepalive.json</code> (true refresh); strangers show check time only.</li>
+        <li>IDs stay visible for 7 days — refresh keeps them alive. Stranger expiry is an estimate: alive now means valid within 7d of their last refresh (unknown when).</li>
+        <li>This panel shows when <i>we</i> checked, not when <i>they</i> last refreshed. Only the owner's keepalive knows the true time.</li>
         <li><details><summary>Technical: retention 604800s</summary><p class="muted" style="margin:6px 0 0">Retention <code>604800s</code> (7 days). Refresh with <code>POST https://technocore.chat/kv/did-2e/... {"value": "did:key:..."}</code></p></details></li>
       </ul>
     </section>
@@ -238,6 +238,8 @@
   const autoPollNote = $("autoPollNote");
   const keepaliveTime = $("keepaliveTime");
   const expiryTime = $("expiryTime");
+  const keepaliveLabel = $("keepaliveLabel");
+  const expiryLabel = $("expiryLabel");
   const countdown = $("countdown");
   const countdownSub = $("countdownSub");
   const embedSnippet = $("embedSnippet");
@@ -252,12 +254,13 @@
   let currentFp16 = DEFAULT_FP16;
   let currentHex = DEFAULT_HEX;
   let currentShard = DEFAULT_SHARD;
-  let lastKeepaliveISO = null;
-  let lastSeenISO = null;
   let lastCheckedISO = null;
+  let lastSeenISO = null;
   let currentStatusKind = "idle";
   let expiryTimer = null;
   let autoPollTimer = null;
+  let ownerKeepalive = null;
+  fetch("data/last-keepalive.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw 0;return r.json();}).then(j=>{if(j&&j.did===DEFAULT_DID&&j.published)ownerKeepalive=j;updateExpiryUI();}).catch(()=>{});
 
   function escapeXml(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
   function makeBadgeSvg(statusKind){
@@ -354,39 +357,52 @@
     el.dataset.iso=d.toISOString();
   }
 
+  function isOwner(){return currentDid===DEFAULT_DID&&ownerKeepalive&&ownerKeepalive.did===DEFAULT_DID&&ownerKeepalive.published;}
   function updateExpiryUI() {
-    if (!lastKeepaliveISO) {
+    if (!lastCheckedISO) {
       keepaliveTime.textContent = "— press Check now to load —";
       expiryTime.textContent = "— press Check now to load —";
       countdown.textContent = "— press Check now to load —";
       countdown.className = "pill gray";
       setFriendlyTime(lastSeenEl, null);
-      if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
+      lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{}
       autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
       autoPollNote.title = autoPollTimer ? "Auto-refresh every 60s — keeps time fresh after first success" : "Auto-refresh idle — starts after first successful check";
       countdownSub.textContent = "IDs stay visible for 7 days after the last refresh — Check now loads the latest time";
       return;
     }
-    const last = new Date(lastKeepaliveISO);
-    const expiry = new Date(last.getTime() + 7*24*3600*1000);
-    setFriendlyTime(keepaliveTime, last.toISOString());
-    setFriendlyTime(expiryTime, expiry.toISOString());
+    setFriendlyTime(lastCheckedEl, lastCheckedISO);
     if (!lastSeenISO) { lastSeenEl.textContent="—"; lastSeenEl.removeAttribute("title"); try{delete lastSeenEl.dataset.iso;}catch{} } else setFriendlyTime(lastSeenEl, lastSeenISO);
-    if(lastCheckedISO) setFriendlyTime(lastCheckedEl, lastCheckedISO); else { lastCheckedEl.textContent="—"; lastCheckedEl.removeAttribute("title"); try{delete lastCheckedEl.dataset.iso;}catch{} }
     autoPollNote.textContent = autoPollTimer ? "↻ 60s" : "—";
     autoPollNote.title = autoPollTimer ? "Auto-refresh every 60s — keeps time fresh after first success" : "Auto-refresh idle — starts after first successful check";
-    const diff = expiry.getTime() - Date.now();
-    if (diff <= 0) {
-      countdown.textContent = "Expired " + formatCountdown(diff) + " ago";
-      countdown.className = "pill red";
-      countdownSub.textContent = "Expired — this ID may be stale. Check now to refresh.";
-    } else {
-      countdown.textContent = "Valid for " + formatCountdown(diff);
-      if (diff < 24*3600*1000) countdown.className = "pill yellow";
-      else if (diff < 2*24*3600*1000) countdown.className = "pill yellow";
-      else countdown.className = "pill green";
-      countdownSub.textContent = "IDs stay visible for 7 days after the last refresh — Check now loads the latest time";
+    if (isOwner()) {
+      const last = new Date(ownerKeepalive.published);
+      const expiry = new Date(last.getTime() + 7*24*3600*1000);
+      if(keepaliveLabel)keepaliveLabel.textContent="Last refreshed (owner)";
+      if(expiryLabel)expiryLabel.textContent="Valid until";
+      setFriendlyTime(keepaliveTime, last.toISOString());
+      setFriendlyTime(expiryTime, expiry.toISOString());
+      const diff = expiry.getTime() - Date.now();
+      if (diff <= 0) {
+        countdown.textContent = "Expired " + formatCountdown(diff) + " ago";
+        countdown.className = "pill red";
+        countdownSub.textContent = "Expired — this ID may be stale. Check now to refresh.";
+      } else {
+        countdown.textContent = "Valid for " + formatCountdown(diff);
+        countdown.className = diff < 2*24*3600*1000 ? "pill yellow" : "pill green";
+        countdownSub.textContent = "Owner refresh " + formatRelative(last) + " — valid 7d after refresh";
+      }
+      return;
     }
+    if(keepaliveLabel)keepaliveLabel.textContent="Last checked";
+    if(expiryLabel)expiryLabel.textContent="Expected window";
+    setFriendlyTime(keepaliveTime, lastCheckedISO);
+    keepaliveTime.title += " | alive now — not their refresh time";
+    expiryTime.textContent = "alive now — valid within 7d of last refresh (unknown when)";
+    expiryTime.removeAttribute("title");
+    countdown.textContent = "Alive now ✓";
+    countdown.className = "pill green";
+    countdownSub.textContent = "Checked just now and alive — could expire any time in the next 7d depending on their last refresh";
   }
 
   function setStatus(kind, label) {
@@ -462,7 +478,7 @@
     $("viewKvBtn").href = kvUrl;
     const staticKvLink = document.getElementById('staticKvLink'); if (staticKvLink) { staticKvLink.href = KV_BASE + currentShard; staticKvLink.textContent = KV_BASE + currentShard; }
     const myExampleCard = document.getElementById('myExampleCard'); if (myExampleCard) myExampleCard.style.display = (currentDid === DEFAULT_DID ? '' : 'none');
-    lastKeepaliveISO = null; lastSeenISO = null;
+    lastCheckedISO = null; lastSeenISO = null;
     updateExpiryUI();
     updateEmbed();
     if(currentStatusKind==="idle") updateBadgeImages("idle");
@@ -494,14 +510,13 @@
         const d = new Date(dateHdr);
         if (!isNaN(d.getTime())) {
           lastSeenISO = d.toISOString();
-          lastKeepaliveISO = d.toISOString();
           dateFound = true;
         } else {
           console.warn("[badge] Date header unparseable:", dateHdr);
         }
       }
       if (!dateFound) {
-        if (status===200) { lastSeenISO = new Date().toISOString(); lastKeepaliveISO = lastSeenISO; }
+        if (status===200) { lastSeenISO = new Date().toISOString(); }
         if (!dateHdr) console.warn("[badge] Date header missing (CORS not exposed) — using local time; server Date:", dateHdr);
       }
       const prefix = stripped.slice(0, 2000);
@@ -511,7 +526,6 @@
 
       if (status === 200) {
         setStatus("verified", "✓ Verified — this ID is on Technocore (HTTP 200)");
-        if (dateHdr) lastKeepaliveISO = lastSeenISO;
         if(!autoPollTimer){
           autoPollTimer = setInterval(verify, 60000);
         }
